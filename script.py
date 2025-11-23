@@ -30,7 +30,7 @@ def scrape_goodreads_book(book_url):
                 'title': title,
                 'author': author,
                 'rating': rating,
-                'description': description[:200] + "..." if len(description) > 200 else description
+                'description': description[:1000] + "..." if len(description) > 200 else description
             }
         else:
             print(f"Failed to fetch page. Status code: {response.status_code}")
@@ -40,9 +40,47 @@ def scrape_goodreads_book(book_url):
         print(f"Error: {e}")
         return None
 
-book_url = "https://www.goodreads.com/book/show/2657.To_Kill_a_Mockingbird"
+
+def search_goodreads_books(query):
+    search_url = f"https://www.goodreads.com/search?q={query.replace(' ', '+')}"
+    try:
+        response = requests.get(search_url, headers=headers)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            results = []
+            
+            book_elements = soup.find_all('a', {'class': 'bookTitle'})
+            for book in book_elements[:5]: 
+                book_title = book.text.strip()
+                book_author = book.find_next_sibling('span', {'itemprop': 'author'}).text.strip()
+                book_link = "https://www.goodreads.com" + book['href']
+                results.append({'title': book_title, 'author': book_author, 'link': book_link})
+            return results
+        else:
+            print(f"Failed to fetch search results. Status code: {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"Error: {e}")
+        return []
+
+
+query = input("Enter book title or author to search: ")
+search_results = search_goodreads_books(query)
+if search_results:
+    print("Search Results:")
+    for idx, book in enumerate(search_results):
+        print(f"{idx + 1}. {book['title']} - {book['author']}")
+    
+    choice = int(input("Select a book by number to get details: ")) - 1
+    if 0 <= choice < len(search_results):
+        book_url = search_results[choice]['link']
+    else:
+        print("Invalid choice.")
+        exit()
 book_info = scrape_goodreads_book(book_url)
 
+print("=================================================================")
 if book_info:
     print("Book Information:")
     print(f"Title: {book_info['title']}")
